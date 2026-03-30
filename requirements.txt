@@ -1,28 +1,11 @@
-# Multimodal DeepFake Detection System
-
-## Overview
-This project detects deepfake content using:
-- Spatial features (images)
-- Temporal features (video)
-- Audio signals
-- Frequency domain analysis
-
-## Features
-- Multimodal fusion (attention-based)
-- Real-time inference ready
-- API + UI support
-- Explainability (Grad-CAM)
-
-## Setup
-
-```bash
-pip install -r requirements.txt
-
 fastapi
 uvicorn
 torch
 torchvision
-streamlit
+pillow
 opencv-python-headless
 numpy
-pillow
+librosa
+python-dotenv
+reportlab
+requests
