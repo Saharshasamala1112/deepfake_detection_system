@@ -1,0 +1,2 @@
+backbone: efficientnet_b4
+pretrained: true
