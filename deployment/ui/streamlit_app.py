@@ -13,6 +13,8 @@ def safe_request(url, files, retries=3):
             if i == retries - 1:
                 raise
             time.sleep(2)
+            
+with st.spinner("Analyzing... (First run may take 1-2 mins)"):
 
 def wake_up_server():
     try:
@@ -62,9 +64,17 @@ with tab1:
             try:
                 wake_up_server()  # wake backend
 
+                file_bytes = np.asarray(bytearray(file.read()), dtype=np.uint8)
+                img = cv2.imdecode(file_bytes, 1)
+
+                # Resize to model size
+                img = cv2.resize(img, (224, 224))
+
+                _, img_encoded = cv2.imencode('.jpg', img)
+
                 res = safe_request(
                     f"{API}/predict_image",
-                    {"file": file}
+                    {"file": img_encoded.tobytes()}
                 )
 
                 result = res.json()
@@ -128,7 +138,7 @@ with tab3:
                     f"{API}/predict_audio",
                     {"file": file}
                 )
-                
+
                 st.json(res.json())
             except Exception as e:
                 st.error(f"Error: {e}")
