@@ -69,6 +69,7 @@ with tab1:
 
                 if res.status_code == 200:
                     result = res.json()
+                    
                     st.success(result.get("prediction", "No result"))
                     st.write("Confidence:", result.get("confidence", "N/A"))
                     st.info(result.get("explanation", "No explanation"))
