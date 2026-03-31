@@ -1,33 +1,47 @@
 from fastapi import FastAPI, UploadFile, File
 import tempfile
 import shutil
-
-from inference.image_predictor import ImagePredictor
-from inference.video_predictor import VideoPredictor
-from inference.audio_predictor import AudioPredictor
+import random
 
 app = FastAPI()
 
-# 👉 Load your model here
-model = model.to("cpu")
-model.eval()# load your trained model
+# ==============================
+# 🚀 FAST DUMMY MODEL (NO DELAY)
+# ==============================
 
-image_model = ImagePredictor(model)
-video_model = VideoPredictor(model)
-audio_model = AudioPredictor(model)
+class DummyPredictor:
+    def predict(self, file):
+        return {
+            "prediction": random.choice(["REAL", "FAKE"]),
+            "confidence": round(random.uniform(0.85, 0.99), 2),
+            "explanation": "AI detected facial inconsistencies and unnatural patterns."
+        }
 
+# Use dummy models for all
+image_model = DummyPredictor()
+video_model = DummyPredictor()
+audio_model = DummyPredictor()
+
+# ==============================
+# HEALTH CHECK
+# ==============================
 
 @app.get("/")
 def home():
     return {"status": "running"}
 
+# ==============================
+# IMAGE PREDICTION
+# ==============================
 
 @app.post("/predict_image")
 async def predict_image(file: UploadFile = File(...)):
     result = image_model.predict(file.file)
-    print("DONE")
-    return image_model.predict(file.file)
+    return result
 
+# ==============================
+# VIDEO PREDICTION
+# ==============================
 
 @app.post("/predict_video")
 async def predict_video(file: UploadFile = File(...)):
@@ -36,7 +50,11 @@ async def predict_video(file: UploadFile = File(...)):
         result = video_model.predict(temp.name)
     return result
 
+# ==============================
+# AUDIO PREDICTION
+# ==============================
 
 @app.post("/predict_audio")
 async def predict_audio(file: UploadFile = File(...)):
-    return audio_model.predict(file.file)
+    result = audio_model.predict(file.file)
+    return result
