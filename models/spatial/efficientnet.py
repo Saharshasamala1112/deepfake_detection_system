@@ -1,18 +1,20 @@
 import torch
 import torch.nn as nn
-from torchvision.models import efficientnet_b0, EfficientNet_B0_Weights
-
+from torchvision import models
 
 class EfficientNetSpatial(nn.Module):
     def __init__(self):
         super().__init__()
 
-        self.model = efficientnet_b0(weights=EfficientNet_B0_Weights.DEFAULT)
-        in_features = self.model.classifier[1].in_features
+        model = models.efficientnet_b0(pretrained=True)
+        self.features = model.features
 
-        self.model.classifier = nn.Sequential(
-            nn.Linear(in_features, 1)
-        )
+        # ✅ IMPORTANT FIX
+        self.feature_dim = 1280
+
+        self.pool = nn.AdaptiveAvgPool2d(1)
 
     def forward(self, x):
-        return self.model(x)
+        x = self.features(x)
+        x = self.pool(x)
+        return x.view(x.size(0), -1)
