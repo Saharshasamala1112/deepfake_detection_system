@@ -4,9 +4,25 @@ import numpy as np
 import cv2
 import time
 
+def safe_request(url, files, retries=3):
+    for i in range(retries):
+        try:
+            res = requests.post(url, files=files, timeout=REQUEST_TIMEOUT)
+            return res
+        except requests.exceptions.Timeout:
+            if i == retries - 1:
+                raise
+            time.sleep(2)
+
+def wake_up_server():
+    try:
+        requests.get(API, timeout=10)
+    except:
+        pass
+
 # ---------------- CONFIG ---------------- #
 API = "https://deepfake-detection-system-jlnj.onrender.com"
-REQUEST_TIMEOUT = 60  # seconds
+REQUEST_TIMEOUT = 180  # seconds
 
 # ---------------- LOGIN ---------------- #
 def login():
@@ -44,11 +60,13 @@ with tab1:
     if file and st.button("Predict Image"):
         with st.spinner("Analyzing Image... ⏳"):
             try:
-                res = requests.post(
+                wake_up_server()  # wake backend
+
+                res = safe_request(
                     f"{API}/predict_image",
-                    files={"file": file},
-                    timeout=REQUEST_TIMEOUT
+                    {"file": file}
                 )
+
                 result = res.json()
 
                 st.success(result.get("prediction", "No result"))
@@ -85,11 +103,13 @@ with tab2:
     if file and st.button("Predict Video"):
         with st.spinner("Processing Video... ⏳"):
             try:
-                res = requests.post(
+                wake_up_server()
+
+                res = safe_request(
                     f"{API}/predict_video",
-                    files={"file": file},
-                    timeout=REQUEST_TIMEOUT
+                    {"file": file}
                 )
+
                 st.json(res.json())
             except Exception as e:
                 st.error(f"Error: {e}")
@@ -102,11 +122,13 @@ with tab3:
     if file and st.button("Predict Audio"):
         with st.spinner("Analyzing Audio... ⏳"):
             try:
-                res = requests.post(
+                wake_up_server()
+
+                res = safe_request(
                     f"{API}/predict_audio",
-                    files={"file": file},
-                    timeout=REQUEST_TIMEOUT
+                    {"file": file}
                 )
+                
                 st.json(res.json())
             except Exception as e:
                 st.error(f"Error: {e}")
@@ -140,10 +162,9 @@ with tab4:
             _, img_encoded = cv2.imencode('.jpg', frame)
 
             try:
-                res = requests.post(
+                res = safe_request(
                     f"{API}/predict_image",
-                    files={"file": img_encoded.tobytes()},
-                    timeout=10
+                    {"file": img_encoded.tobytes()}
                 )
 
                 result = res.json()
