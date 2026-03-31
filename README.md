@@ -82,7 +82,7 @@ Final Output (Prediction + Confidence + Report)
 
 ### 1️⃣ Clone Repository
 
-git clone https://github.com/your-username/deepfake_detection_system.git
+git clone https://github.com/Saharshasamala1112/deepfake_detection_system.git
 cd deepfake_detection_system
 
 ---
