@@ -9,7 +9,8 @@ from inference.audio_predictor import AudioPredictor
 app = FastAPI()
 
 # 👉 Load your model here
-model = ...  # load your trained model
+model = model.to("cpu")
+model.eval()# load your trained model
 
 image_model = ImagePredictor(model)
 video_model = VideoPredictor(model)
@@ -23,6 +24,8 @@ def home():
 
 @app.post("/predict_image")
 async def predict_image(file: UploadFile = File(...)):
+    result = image_model.predict(file.file)
+    print("DONE")
     return image_model.predict(file.file)
 
 
