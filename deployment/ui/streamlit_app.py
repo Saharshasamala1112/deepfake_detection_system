@@ -3,7 +3,7 @@ import requests
 import numpy as np
 import cv2
 
-API_URL = "http://127.0.0.1:8000"
+API_URL = "https://deepfake-detection-system-jlnj.onrender.com"
 
 st.set_page_config(layout="wide")
 st.title("🧠 Deepfake Detection Dashboard")
