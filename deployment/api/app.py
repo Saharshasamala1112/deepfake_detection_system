@@ -1,62 +1,39 @@
 from fastapi import FastAPI, UploadFile, File
-import torch
-from PIL import Image
-import io
-import torchvision.transforms as T
-import numpy as np
-import cv2
+import tempfile
+import shutil
 
-from models.multimodal_model import MultiModalModel
-from utils.device import get_device
-from explainability.gradcam import GradCAM
+from inference.image_predictor import ImagePredictor
+from inference.video_predictor import VideoPredictor
+from inference.audio_predictor import AudioPredictor
 
 app = FastAPI()
 
-device = get_device()
+# 👉 Load your model here
+model = ...  # load your trained model
 
-model = MultiModalModel().to(device)
-model.load_state_dict(torch.load("model.pth", map_location=device))
-model.eval()
-
-gradcam = GradCAM(model)
-
-transform = T.Compose([
-    T.Resize((224, 224)),
-    T.ToTensor(),
-    T.Normalize([0.485, 0.456, 0.406],
-                [0.229, 0.224, 0.225])
-])
+image_model = ImagePredictor(model)
+video_model = VideoPredictor(model)
+audio_model = AudioPredictor(model)
 
 
 @app.get("/")
 def home():
-    return {"message": "Deepfake API Running"}
+    return {"status": "running"}
 
 
 @app.post("/predict_image")
 async def predict_image(file: UploadFile = File(...)):
-    contents = await file.read()
+    return image_model.predict(file.file)
 
-    image = Image.open(io.BytesIO(contents)).convert("RGB")
-    image_np = np.array(image)
 
-    input_tensor = transform(image).unsqueeze(0).to(device)
+@app.post("/predict_video")
+async def predict_video(file: UploadFile = File(...)):
+    with tempfile.NamedTemporaryFile(delete=False) as temp:
+        shutil.copyfileobj(file.file, temp)
+        result = video_model.predict(temp.name)
+    return result
 
-    with torch.no_grad():
-        output = model(input_tensor).item()
 
-    pred = "FAKE" if output > 0.6 else "REAL"
-
-    # Grad-CAM
-    cam = gradcam.generate(input_tensor)
-
-    heatmap = cv2.applyColorMap(np.uint8(255 * cam), cv2.COLORMAP_JET)
-    overlay = cv2.addWeighted(image_np, 0.6, heatmap, 0.4, 0)
-
-    _, buffer = cv2.imencode(".jpg", overlay)
-
-    return {
-        "prediction": pred,
-        "confidence": float(output),
-        "heatmap": buffer.tobytes().hex()
-    }
+@app.post("/predict_audio")
+async def predict_audio(file: UploadFile = File(...)):
+    return audio_model.predict(file.file)
