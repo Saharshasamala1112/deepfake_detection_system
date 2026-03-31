@@ -69,7 +69,9 @@ with tab1:
 
                 if res.status_code == 200:
                     result = res.json()
-                    st.success(f"Prediction: {result.get('prediction', 'Done')}")
+                    st.success(result.get("prediction", "No result"))
+                    st.write("Confidence:", result.get("confidence", "N/A"))
+                    st.info(result.get("explanation", "No explanation"))
 
                 else:
                     st.error(f"Server error: {res.status_code}")
@@ -82,12 +84,6 @@ with tab1:
 
         else:
             st.warning("Please upload an image first.")
-
-                result = res.json()
-
-                st.success(result.get("prediction", "No result"))
-                st.write("Confidence:", result.get("confidence", "N/A"))
-                st.info(result.get("explanation", "No explanation"))
 
                 # Heatmap
                 if "heatmap" in result:
