@@ -80,8 +80,8 @@ with tab1:
             except Exception as e:
                 st.error(f"Error: {str(e)}")
 
-    else:
-        st.warning("Please upload an image first.")
+        else:
+            st.warning("Please upload an image first.")
 
                 result = res.json()
 
