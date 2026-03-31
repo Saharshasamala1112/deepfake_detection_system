@@ -1,40 +1,28 @@
 import torch
-import librosa
+import cv2
 import numpy as np
+from torchvision import transforms
+from PIL import Image
 
-from models.multimodal_model import MultiModalModel
-from utils.device import get_device
-
-
-class AudioPredictor:
-    def __init__(self):
-        self.device = get_device()
-
-        self.model = MultiModalModel().to(self.device)
-        self.model.load_state_dict(torch.load("model.pth", map_location=self.device))
+class ImagePredictor:
+    def __init__(self, model):
+        self.model = model
         self.model.eval()
 
-    def audio_to_spec(self, path):
-        y, sr = librosa.load(path, sr=16000)
-        spec = librosa.feature.melspectrogram(y=y, sr=sr)
-        spec = librosa.power_to_db(spec)
+        self.transform = transforms.Compose([
+            transforms.Resize((128, 128)),  # 🔥 faster
+            transforms.ToTensor(),
+        ])
 
-        spec = np.resize(spec, (224, 224))
-        spec = np.stack([spec, spec, spec])
+    def predict(self, img_bytes):
+        img = Image.open(img_bytes).convert("RGB")
+        img = self.transform(img).unsqueeze(0)
 
-        return torch.tensor(spec).float().unsqueeze(0)
+        with torch.no_grad():  # 🔥 important
+            output = self.model(img)
+            prob = torch.sigmoid(output).item()
 
-    def predict(self, audio_path):
-        spec = self.audio_to_spec(audio_path).to(self.device)
-
-        with torch.no_grad():
-            output = self.model(spec).item()
-
-        if output > 0.6:
-            label = "FAKE"
-        elif output < 0.4:
-            label = "REAL"
-        else:
-            label = "UNCERTAIN"
-
-        return label, output
+        return {
+            "prediction": "FAKE" if prob > 0.5 else "REAL",
+            "confidence": float(prob)
+        }
