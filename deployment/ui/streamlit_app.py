@@ -2,11 +2,13 @@ import streamlit as st
 import requests
 import numpy as np
 import cv2
-import cv2
 import time
-import streamlit as st
 
-# 🔐 Simple login
+# ---------------- CONFIG ---------------- #
+API = "https://deepfake-detection-system-jlnj.onrender.com"
+REQUEST_TIMEOUT = 60  # seconds
+
+# ---------------- LOGIN ---------------- #
 def login():
     st.title("🔐 Login")
 
@@ -16,11 +18,12 @@ def login():
     if st.button("Login"):
         if username == "admin" and password == "1234":
             st.session_state["logged_in"] = True
+            st.success("Login successful ✅")
         else:
-            st.error("Invalid credentials")
+            st.error("Invalid credentials ❌")
 
 
-# Check login
+# Session state check
 if "logged_in" not in st.session_state:
     st.session_state["logged_in"] = False
 
@@ -28,90 +31,134 @@ if not st.session_state["logged_in"]:
     login()
     st.stop()
 
-API = "https://deepfake-detection-system-jlnj.onrender.com"
-
+# ---------------- MAIN UI ---------------- #
+st.set_page_config(page_title="Deepfake Detector", layout="wide")
 st.title("🧠 Deepfake Detection System")
 
-tab1, tab2, tab3, tab4 = st.tabs(["Image", "Video", "Audio", "Webcam"])
+tab1, tab2, tab3, tab4 = st.tabs(["🖼 Image", "🎥 Video", "🎵 Audio", "📷 Webcam"])
 
-# IMAGE
+# ---------------- IMAGE ---------------- #
 with tab1:
-    file = st.file_uploader("Upload Image", type=["jpg","png"])
+    file = st.file_uploader("Upload Image", type=["jpg", "png"])
+
     if file and st.button("Predict Image"):
-        res = requests.post(f"{API}/predict_image", files={"file": file})
-        result = res.json()
+        with st.spinner("Analyzing Image... ⏳"):
+            try:
+                res = requests.post(
+                    f"{API}/predict_image",
+                    files={"file": file},
+                    timeout=REQUEST_TIMEOUT
+                )
+                result = res.json()
 
-        st.success(result["prediction"])
-        st.write("Confidence:", result["confidence"])
-        st.info(result["explanation"])
+                st.success(result.get("prediction", "No result"))
+                st.write("Confidence:", result.get("confidence", "N/A"))
+                st.info(result.get("explanation", "No explanation"))
 
-        heatmap_bytes = bytes.fromhex(result["heatmap"])
-        nparr = np.frombuffer(heatmap_bytes, np.uint8)
-        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                # Heatmap
+                if "heatmap" in result:
+                    heatmap_bytes = bytes.fromhex(result["heatmap"])
+                    nparr = np.frombuffer(heatmap_bytes, np.uint8)
+                    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                    st.image(img, caption="Heatmap")
 
-        st.image(img)
-        # Download PDF
-        if "pdf" in result:
-            pdf_bytes = bytes.fromhex(result["pdf"])
+                # PDF Download
+                if "pdf" in result:
+                    pdf_bytes = bytes.fromhex(result["pdf"])
+                    st.download_button(
+                        label="📄 Download Report",
+                        data=pdf_bytes,
+                        file_name="deepfake_report.pdf",
+                        mime="application/pdf"
+                    )
 
-            st.download_button(
-                label="📄 Download Full Report",
-                data=pdf_bytes,
-                file_name="deepfake_report.pdf",
-                mime="application/pdf"
-            )
-        else:
-            st.warning("PDF report not available")
+            except requests.exceptions.Timeout:
+                st.error("⏰ Request timed out. Try again.")
+            except Exception as e:
+                st.error(f"Error: {e}")
 
-# VIDEO
+
+# ---------------- VIDEO ---------------- #
 with tab2:
     file = st.file_uploader("Upload Video", type=["mp4"])
+
     if file and st.button("Predict Video"):
-        res = requests.post(f"{API}/predict_video", files={"file": file})
-        st.write(res.json())
+        with st.spinner("Processing Video... ⏳"):
+            try:
+                res = requests.post(
+                    f"{API}/predict_video",
+                    files={"file": file},
+                    timeout=REQUEST_TIMEOUT
+                )
+                st.json(res.json())
+            except Exception as e:
+                st.error(f"Error: {e}")
 
-# AUDIO
+
+# ---------------- AUDIO ---------------- #
 with tab3:
-    file = st.file_uploader("Upload Audio", type=["wav","mp3","flac","parquet"])
-    if file and st.button("Predict Audio"):
-        res = requests.post(f"{API}/predict_audio", files={"file": file})
-        st.write(res.json())
+    file = st.file_uploader("Upload Audio", type=["wav", "mp3", "flac"])
 
-# WEBCAM
+    if file and st.button("Predict Audio"):
+        with st.spinner("Analyzing Audio... ⏳"):
+            try:
+                res = requests.post(
+                    f"{API}/predict_audio",
+                    files={"file": file},
+                    timeout=REQUEST_TIMEOUT
+                )
+                st.json(res.json())
+            except Exception as e:
+                st.error(f"Error: {e}")
+
+
+# ---------------- WEBCAM ---------------- #
 with tab4:
-    st.header("📷 Real-Time Webcam Detection")
+    st.subheader("📷 Real-Time Webcam Detection")
 
     run = st.checkbox("Start Camera")
-
     FRAME_WINDOW = st.image([])
 
-    cap = cv2.VideoCapture(0)
+    cap = None
 
-    while run:
-        ret, frame = cap.read()
-        if not ret:
-            break
+    if run:
+        cap = cv2.VideoCapture(0)
 
-        # Resize + send to API
-        _, img_encoded = cv2.imencode('.jpg', frame)
+        if not cap.isOpened():
+            st.error("Camera not accessible ❌")
 
-        res = requests.post(
-            f"{API}/predict_image",
-            files={"file": img_encoded.tobytes()}
-        )
+        while run:
+            ret, frame = cap.read()
+            if not ret:
+                st.error("Failed to capture frame")
+                break
 
-        try:
-            result = res.json()
-            label = result.get("prediction", "...")
-        except:
-            label = "ERROR"
+            # Resize for speed 🚀
+            frame = cv2.resize(frame, (320, 240))
 
-        # Put label on frame
-        cv2.putText(frame, label, (20, 50),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
+            # Encode
+            _, img_encoded = cv2.imencode('.jpg', frame)
 
-        FRAME_WINDOW.image(frame, channels="BGR")
+            try:
+                res = requests.post(
+                    f"{API}/predict_image",
+                    files={"file": img_encoded.tobytes()},
+                    timeout=10
+                )
 
-        time.sleep(0.1)
+                result = res.json()
+                label = result.get("prediction", "...")
+            except:
+                label = "ERROR"
 
-    cap.release()
+            # Draw label
+            cv2.putText(frame, label, (10, 30),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+
+            FRAME_WINDOW.image(frame, channels="BGR")
+
+            # Reduce API load
+            time.sleep(0.2)
+
+        if cap:
+            cap.release()
