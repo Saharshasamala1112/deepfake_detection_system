@@ -131,7 +131,7 @@ Start Command:
 uvicorn deployment.api.app:app --host 0.0.0.0 --port 10000
 
 Environment Variable:
-OPENAI_API_KEY=your_api_key
+OPEN_API_KEY=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
 
 ---
 
