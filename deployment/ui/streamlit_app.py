@@ -7,7 +7,7 @@ import time
 def safe_request(url, files, retries=3):
     for i in range(retries):
         try:
-            res = requests.post(url, files=files, timeout=REQUEST_TIMEOUT)
+            res = requests.post(API_URL, files=files, timeout=120)
             return res
         except requests.exceptions.Timeout:
             if i == retries - 1:
@@ -58,23 +58,30 @@ tab1, tab2, tab3, tab4 = st.tabs(["🖼 Image", "🎥 Video", "🎵 Audio", "�
 with tab1:
     file = st.file_uploader("Upload Image", type=["jpg", "png"])
 
-    if file and st.button("Predict Image"):
+    if st.button("Predict Image"):
+
+        if uploaded_file is not None:
+            files = {"file": uploaded_file.getvalue()}
+
         with st.spinner("Analyzing Image... ⏳"):
             try:
-                wake_up_server()  # wake backend
+                res = requests.post(API_URL, files=files, timeout=120)
 
-                file_bytes = np.asarray(bytearray(file.read()), dtype=np.uint8)
-                img = cv2.imdecode(file_bytes, 1)
+                if res.status_code == 200:
+                    result = res.json()
+                    st.success(f"Prediction: {result.get('prediction', 'Done')}")
 
-                # Resize to model size
-                img = cv2.resize(img, (224, 224))
+                else:
+                    st.error(f"Server error: {res.status_code}")
 
-                _, img_encoded = cv2.imencode('.jpg', img)
+            except requests.exceptions.Timeout:
+                st.error("⏳ Request timed out. Model is slow.")
 
-                res = safe_request(
-                    f"{API}/predict_image",
-                    {"file": img_encoded.tobytes()}
-                )
+            except Exception as e:
+                st.error(f"Error: {str(e)}")
+
+    else:
+        st.warning("Please upload an image first.")
 
                 result = res.json()
 
