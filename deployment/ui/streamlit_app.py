@@ -13,8 +13,7 @@ def safe_request(url, files, retries=3):
             if i == retries - 1:
                 raise
             time.sleep(2)
-            
-with st.spinner("Analyzing... (First run may take 1-2 mins)"):
+
 
 def wake_up_server():
     try:
